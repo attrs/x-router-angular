@@ -41,7 +41,7 @@ module.exports = function(options) {
   
   var base = options.base || '/';
   var parent = options.parent || document.documentElement;
-  var defaultTarget = options.target;
+  var defaultTarget = options.target || options.defaultTarget;
   var onload = options.onload;
   var onrender = options.onrender;
   var onpack = options.onpack;
