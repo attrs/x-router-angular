@@ -1,0 +1,22 @@
+{
+  "name": "x-router-angular",
+  "version": "0.0.0",
+  "description": "x-router angular middleware",
+  "main": "x-router-angular.js",
+  "repository": "attrs/x-router-angular",
+  "author": "joje <joje.attrs@gmail.com>",
+  "homepage": "https://github.com/attrs/x-router-angular",
+  "license": "MIT",
+  "keywords": [
+    "router",
+    "browserify",
+    "x-router",
+    "webmodules",
+    "angular"
+  ],
+  "files": [
+    "*.js",
+    "LICENSE",
+    "README.md"
+  ]
+}
