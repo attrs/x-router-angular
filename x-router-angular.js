@@ -108,9 +108,8 @@ module.exports = function(options) {
       var controller = options.controller;
       var target = options.target || defaultTarget;
       var targetel = document.querySelector(target);
-      if( typeof controller !== 'string' ) return done(new TypeError('controller must be a string'));
+      if( controller && typeof controller !== 'string' ) return done(new TypeError('controller must be a string'));
       if( !targetel ) return done(new TypeError('undefined target:' + target));
-      
       
       function render(els) {
         if( controller ) [].forEach.call(els, function(node) {
