@@ -7,6 +7,12 @@ function isNode(node) {
   return false;
 }
 
+function isElement(node) {
+  if( typeof Element === 'object' && node instanceof Element ) return true;
+  if( node.nodeType === 1 && node.tagName && typeof node.setAttribute === 'function' ) return true;
+  return false;
+}
+
 function isArrayLike(o) {
   if( o && typeof o === 'object' && typeof o.length === 'number' ) return true;
   return false;
@@ -99,16 +105,25 @@ module.exports = function(options) {
       if( typeof options === 'function' ) done = options, options = null;
       
       options = options || {};
+      var controller = options.controller;
       var target = options.target || defaultTarget;
       var targetel = document.querySelector(target);
-      if( !targetel ) return done(new Error('undefined target:' + target));
+      if( typeof controller !== 'string' ) return done(new TypeError('controller must be a string'));
+      if( !targetel ) return done(new TypeError('undefined target:' + target));
+      
       
       function render(els) {
+        if( controller ) [].forEach.call(els, function(node) {
+          if( isElement(node) && !node.hasAttribute('ng-controller') )
+            node.setAttribute('ng-controller', controller);
+        })
+        
         res.pack(els, function(err) {
           if( err ) return done(err);
           
           targetel.innerHTML = '';
           [].forEach.call(els, function(node) {
+            
             targetel.appendChild(node);
           });
           
