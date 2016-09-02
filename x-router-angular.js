@@ -55,26 +55,29 @@ function apply(scope, done) {
   }
 }
 
-function pack(parent, target, done) {
+function pack(parent, elements, done) {
   done = done || function(err) { if( err ) console.error(err) };
-  if( !target ) return done(new TypeError('missing target'));
-  if( isNode(target) ) target = [target];
-  if( !isArrayLike(target) ) return done(new TypeError('unknwon type of target: ' +  target));
+  if( !elements ) return done(new TypeError('missing elements'));
+  if( isNode(elements) ) elements = [elements];
+  if( !isArrayLike(elements) ) return done(new TypeError('unknwon type of elements: ' +  elements));
   
-  var root = angular.element(parent);
-  var injector = root.injector();
+  if( !parent ) return done(new Error('missing parent scope element'));
+  var parentElement = angular.element(parent);
+  var injector = parentElement.injector();
+  if( !injector ) return done(new Error('not found parent scope element'));
   
-  [].forEach.call(target, function(el) {
+  var parentScope = parentElement.scope();
+  [].forEach.call(elements, function(el) {
     if( el.__packed__ ) return;
     el.__packed__ = true;
     
     injector.invoke(['$compile', '$rootScope', function($compile, $rootScope) {
-      $compile(el)($rootScope);
+      $compile(el)(parentScope);
       $rootScope.$digest();
     }]);
   });
   
-  done(null, target);
+  done(null, elements);
 }
 
 function scope(el, controller) {
@@ -82,12 +85,25 @@ function scope(el, controller) {
   if( !isElement(el) ) return console.error('element must be an element or selector', arguments[0]);
   if( controller ) el = el.querySelector('*[ng-controller=\"' + controller + '\"]');
   if( !el ) return console.error('not found element', arguments[0]);
-  if( !el.hasAttribute('ng-controller') ) el = el.querySelector('*[ng-controller]');
+  if( !el.hasAttribute('ng-app') && !el.hasAttribute('ng-controller') ) el = el.querySelector('*[ng-controller]');
   if( !el ) return console.error('not found scoped element', arguments[0]);
   
   return angular.element(el).scope();
 }
 
+function parentScopeElement(el) {
+  function find() {
+    if( !el ) return null;
+    var scope = angular.element(el).scope();
+    if( scope ) return el;
+    el = el.parentNode;
+    find();
+  }
+  
+  return find();
+}
+
+var cache = {};
 function render(options, done) {
   done = done || function(err) { if( err ) console.error(err) };
   if( !options ) return done(new Error('missing options'));
@@ -97,14 +113,25 @@ function render(options, done) {
   var src = options.src;
   var controller = options.controller;
   var target = options.target;
-  var parent = options.parent || window.documentElement;
   var targetel = document.querySelector(target);
   var onload = options.onload;
   var onrender = options.onrender;
-
+  //console.log('parentscope', src, parent, angular.element(parent).scope());
+  
   if( !targetel ) return done(new TypeError('cannot find target:' + target));
   if( controller && typeof controller !== 'string' ) return done(new TypeError('controller must be a string'));
+  if( options.singleton && cache[src] ) {
+    var els = cache[src];
+    targetel.innerHTML = '';
+    [].forEach.call(els, function(node) {
+      targetel.appendChild(node);
+    });
+    
+    onrender && onrender(null, els);
+    return done(null, targetel, els);
+  }
   
+  var parent = options.parent || parentScopeElement(targetel);
   function render(els) {
     if( controller ) [].forEach.call(els, function(node) {
       if( isElement(node) && !node.hasAttribute('ng-controller') )
@@ -121,6 +148,8 @@ function render(options, done) {
       
       onrender && onrender(null, els);
       done(null, targetel, els);
+      
+      if( options.singleton ) cache[src] = els;
     });
   }
   
@@ -139,28 +168,28 @@ function renderer(options) {
   options = options || {};
   
   var base = options.base || '/';
-  var parent = options.parent || document.documentElement;
-  var defaultTarget = options.target || options.defaultTarget;
-  var onload = options.onload;
-  var onrender = options.onrender;
-  var onpack = options.onpack;
+  var app = options.app;
+  var defaults = options.defaults || {};
   
   return function(req, res, next) {
+    var root = app ? document.querySelector('[ng-app="' + app + '"]') : document.querySelector('[ng-app]');
+  
     res.apply = function(scope, done) {
       apply(scope, done);
       return this;
     };
     
-    res.pack = function(target, done) {
-      pack(parent, target, function(err, target, els) {
+    res.pack = function(elements, done) {
+      pack(root, elements, function(err, elements) {
         if( err ) return done(err);
-        onpack && onpack(null, target, els);
+        defaults.onpack && defaults.onpack(null, elements);
       });
       return this;
     };
     
     res.scope = function(el, controller) {
-      if( !el ) el = parent;
+      if( !el ) el = root;
+      if( !el ) return null;
       return scope(el, controller);
     };
     
@@ -168,18 +197,16 @@ function renderer(options) {
       done = done || function(err) { if( err ) console.error(err) };
       
       var options = {};
+      for(var k in defaults) options[k] = defaults[k];
+      
       if( !src ) return done(new TypeError('missing src'));
-      else if( typeof src === 'object' ) options = src;
+      else if( typeof src === 'object' ) for(var k in src) options[k] = src[k];
       else if( typeof src === 'string' ) options.src = src;
       if( typeof target === 'function' ) done = target, target = null;
       else if( typeof target === 'string' ) options.target = target;
       else if( typeof target === 'object' ) for(var k in target) options[k] = target[k];
       
       options.src = path.join(base, options.src);
-      options.onload = options.onload || onload;
-      options.onrender = options.onrender || onrender;
-      options.parent = options.parent || parent;
-      options.target = options.target || defaultTarget;
       render(options, done);
       return this;
     };
