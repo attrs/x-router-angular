@@ -1,6 +1,7 @@
 var path = require('path');
 var angular = require('angular');
 
+
 function isNode(node) {
   if( typeof Node === 'object' && node instanceof Node ) return true;
   if( typeof node.nodeType === 'number' && node.nodeName ) return true;
@@ -116,6 +117,7 @@ function render(options, done) {
   var targetel = document.querySelector(target);
   var onload = options.onload;
   var onrender = options.onrender;
+  var singleton = options.singleton;
   //console.log('parentscope', src, parent, angular.element(parent).scope());
   
   if( !targetel ) return done(new TypeError('cannot find target:' + target));
@@ -148,18 +150,18 @@ function render(options, done) {
       
       onrender && onrender(null, els);
       done(null, targetel, els);
-      
-      if( options.singleton ) cache[src] = els;
     });
   }
   
-  if( typeof src === 'string' ) ajax(src, function(err, html) {
-    if( err ) return done(err), onload && onload(err);
-    var els = evalhtml(html);
-    onload && onload(null, els);
-    render(els);
-  });
-  else if( isNode(src) ) render([src]);
+  if( typeof src === 'string' ) {
+    ajax(src, function(err, html) {
+      if( err ) return done(err), onload && onload(err);
+      var els = evalhtml(html);
+      onload && onload(null, els);
+      if( singleton ) cache[src] = els;
+      render(els);
+    });
+  } else if( isNode(src) ) render([src]);
   else if( isArrayLike(src) ) render(src);
   else return done(new TypeError('unknwon type of src: ' + src));
 }
@@ -170,10 +172,19 @@ function renderer(options) {
   var base = options.base || '/';
   var app = options.app;
   var defaults = options.defaults || {};
+  var modalbuilder = options.modalbuilder || {
+    build: function(elements, options, done) {
+      var container = document.createElement('div');
+      done(null, container);
+    },
+    open: function(container, done) {
+      
+    }
+  };
   
   return function(req, res, next) {
     var root = app ? document.querySelector('[ng-app="' + app + '"]') : document.querySelector('[ng-app]');
-  
+    
     res.apply = function(scope, done) {
       apply(scope, done);
       return this;
@@ -211,6 +222,27 @@ function renderer(options) {
       return this;
     };
     
+    res.modal = function(src, options, height) {
+      done = arguments[arguments.length - 1];
+      if( typeof done !== 'function' ) done = function(err) { if( err ) console.error(err) };
+      
+      var o = {};
+      for(var k in defaults) o[k] = defaults[k];
+      
+      if( !src ) return done(new TypeError('missing src'));
+      else if( typeof src === 'object' ) for(var k in src) o[k] = src[k];
+      else if( typeof src === 'string' ) o.src = src;
+      
+      if( typeof height === 'number' ) o.height = height;
+      if( typeof options === 'number' ) o.width = options;
+      else if( typeof options === 'object' ) for(var k in src) o[k] = options[k];
+      else if( typeof options === 'string' ) o.modalTarget = options;
+      
+      options.src = path.join(base, o.src);
+      modal(o, done);
+      return this;
+    };
+    
     next();
   };
 };
@@ -220,3 +252,5 @@ renderer.pack = pack;
 renderer.scope = scope;
 renderer.render = render;
 module.exports = renderer;
+
+angular.module('xRouterAngular', []).service('xRouterAngular', function() { return module.exports; });
