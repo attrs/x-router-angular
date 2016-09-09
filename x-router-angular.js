@@ -105,82 +105,50 @@ function parentScopeElement(el) {
 }
 
 var cache = {};
-function render(options, done) {
+function render(src, options, done) {
+  if( arguments.length == 2 && typeof options === 'function' ) done = options, options = null;
   done = done || function(err) { if( err ) console.error(err) };
+  if( !src ) return done(new Error('missing src'));
   if( !options ) return done(new Error('missing options'));
-  if( !options.src ) return done(new Error('missing src'));
   if( !options.target ) return done(new Error('missing target'));
   
-  var src = options.src;
-  var controller = options.controller;
-  var target = options.target;
-  var targetel = document.querySelector(target);
-  var onload = options.onload;
-  var onrender = options.onrender;
   var singleton = options.singleton;
-  //console.log('parentscope', src, parent, angular.element(parent).scope());
+  var target = options.target;
   
-  if( !targetel ) return done(new TypeError('cannot find target:' + target));
-  if( controller && typeof controller !== 'string' ) return done(new TypeError('controller must be a string'));
-  if( options.singleton && cache[src] ) {
-    var els = cache[src];
-    targetel.innerHTML = '';
+  var doit = function(target, els, done) {
+    target.innerHTML = '';
     [].forEach.call(els, function(node) {
-      targetel.appendChild(node);
+      target.appendChild(node);
     });
     
-    onrender && onrender(null, els);
-    return done(null, targetel, els);
-  }
-  
-  var parent = options.parent || parentScopeElement(targetel);
-  function render(els) {
-    if( controller ) [].forEach.call(els, function(node) {
-      if( isElement(node) && !node.hasAttribute('ng-controller') )
-        node.setAttribute('ng-controller', controller);
-    })
-    
-    pack(parent, els, function(err) {
+    pack(options.parent || parentScopeElement(target), els, function(err) {
       if( err ) return done(err);
-      
-      targetel.innerHTML = '';
-      [].forEach.call(els, function(node) {
-        targetel.appendChild(node);
-      });
-      
-      onrender && onrender(null, els);
-      done(null, targetel, els);
+      done(null, target, els);
     });
+  };
+  
+  if( singleton && cache[src] ) {
+    doit(target, cache[src], function(err, target, els) {
+      if( err ) return done(err);
+      done(null, target, els);
+    });
+    return;
   }
   
-  if( typeof src === 'string' ) {
-    ajax(src, function(err, html) {
-      if( err ) return done(err), onload && onload(err);
-      var els = evalhtml(html);
-      onload && onload(null, els);
+  ajax(src, function(err, html) {
+    if( err ) return done(err);
+    doit(target, evalhtml(html), function(err, target, els) {
+      if( err ) return done(err);
       if( singleton ) cache[src] = els;
-      render(els);
+      done(null, target, els);
     });
-  } else if( isNode(src) ) render([src]);
-  else if( isArrayLike(src) ) render(src);
-  else return done(new TypeError('unknwon type of src: ' + src));
+  });
 }
 
-function renderer(options) {
+function middleware(options) {
   options = options || {};
-  
-  var base = options.base || '/';
   var app = options.app;
-  var defaults = options.defaults || {};
-  var modalbuilder = options.modalbuilder || {
-    build: function(elements, options, done) {
-      var container = document.createElement('div');
-      done(null, container);
-    },
-    open: function(container, done) {
-      
-    }
-  };
+  var defaults = options.defaults;
   
   return function(req, res, next) {
     var root = app ? document.querySelector('[ng-app="' + app + '"]') : document.querySelector('[ng-app]');
@@ -193,7 +161,6 @@ function renderer(options) {
     res.pack = function(elements, done) {
       pack(root, elements, function(err, elements) {
         if( err ) return done(err);
-        defaults.onpack && defaults.onpack(null, elements);
       });
       return this;
     };
@@ -204,53 +171,39 @@ function renderer(options) {
       return scope(el, controller);
     };
     
-    res.render = function(src, target, done) {
-      done = done || function(err) { if( err ) console.error(err) };
-      
-      var options = {};
-      for(var k in defaults) options[k] = defaults[k];
-      
-      if( !src ) return done(new TypeError('missing src'));
-      else if( typeof src === 'object' ) for(var k in src) options[k] = src[k];
-      else if( typeof src === 'string' ) options.src = src;
-      if( typeof target === 'function' ) done = target, target = null;
-      else if( typeof target === 'string' ) options.target = target;
-      else if( typeof target === 'object' ) for(var k in target) options[k] = target[k];
-      
-      options.src = path.join(base, options.src);
-      render(options, done);
-      return this;
-    };
-    
-    res.modal = function(src, options, height) {
-      done = arguments[arguments.length - 1];
-      if( typeof done !== 'function' ) done = function(err) { if( err ) console.error(err) };
-      
-      var o = {};
-      for(var k in defaults) o[k] = defaults[k];
-      
-      if( !src ) return done(new TypeError('missing src'));
-      else if( typeof src === 'object' ) for(var k in src) o[k] = src[k];
-      else if( typeof src === 'string' ) o.src = src;
-      
-      if( typeof height === 'number' ) o.height = height;
-      if( typeof options === 'number' ) o.width = options;
-      else if( typeof options === 'object' ) for(var k in src) o[k] = options[k];
-      else if( typeof options === 'string' ) o.modalTarget = options;
-      
-      options.src = path.join(base, o.src);
-      modal(o, done);
-      return this;
-    };
+    if( !('render' in res) ) {
+      res.render = function(src, options, done) {
+        if( !('singleton' in options) ) options.singleton = defaults.singleton;
+        render(src, options, done);
+      };
+    }
     
     next();
   };
 };
 
-renderer.apply = apply;
-renderer.pack = pack;
-renderer.scope = scope;
-renderer.render = render;
-module.exports = renderer;
+function engine(defaults) {
+  defaults = defaults || {};
+  
+  return function(src, options, done) {
+    if( !('singleton' in options) ) options.singleton = defaults.singleton;
+    render(src, options, done);
+  };
+};
 
-angular.module('xRouterAngular', []).service('xRouterAngular', function() { return module.exports; });
+
+middleware.engine = engine;
+middleware.apply = apply;
+middleware.pack = pack;
+middleware.scope = scope;
+middleware.render = render;
+module.exports = middleware;
+
+angular.module('xRouterAngular', []).service('xRouterAngular', function() {
+  return {
+    apply: apply,
+    pack: pack,
+    scope: scope,
+    render: render
+  };
+});
