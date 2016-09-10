@@ -1,27 +1,28 @@
 # x-router-angular
-> An angularjs renderer middleware for x-router (browser)
+> An angularjs render engine for x-router
 
 ```sh
 $ npm install x-router-angular --save
 ```
 
 ```sh
-var angularrenderer = require('x-router-angular');
 var router = require('x-router');
-var path = require('path');
+var xrouterangular = require('x-router-angular');
 
-router.use(angularrenderer({defaultTarget:'#default-target-element'}))
-.get('/a', function(req, res, next) {
-    res.render(path.join(__dirname, 'partial', 'a.html'));
-})
-.get('/b', function(req, res, next) {
-    res.render({
-        html: require('./partial/b.html')
+router()
+  .engine('angular', xrouterangular.engine({
+    singleton: true
+  }))
+  .set('view engine', 'angular')
+  .set('view target', '#page')
+  .set('views', '/')
+  .use(xrouterangular())
+  .get('/', function(req, res, next) {
+    res.render('sidebar.html', '#sidebar');
+    res.render('page.html', function(err) {
+      if( err ) return next(err);
+      res.end();
     });
-})
-.get('/c', function(req, res, next) {
-    res.render(path.join(__dirname, 'partial', 'c.html'));
-    res.render(path.join(__dirname, 'partial', 'side.html'), { target:'#sidebar' });
-});
+  });
 
 ```
