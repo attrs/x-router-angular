@@ -122,13 +122,11 @@ function engine(defaults) {
     
     if( singleton && cache[src] ) {
       return (function() {
-        var els = cache[src].els;
-        var sc = cache[src].scopes;
         target.innerHTML = '';
-        [].forEach.call(els, function(node) {
+        [].forEach.call(cache[src].els, function(node) {
           target.appendChild(node);
-          done(null, sc);
         });
+        done(null, cache[src].scopes);
       })();
     }
     
