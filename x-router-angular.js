@@ -37,7 +37,7 @@ function pack(parent, elements, done) {
   if( !elements ) return done(new TypeError('missing elements'));
   if( isNode(elements) ) elements = [elements];
   if( !isArrayLike(elements) ) return done(new TypeError('unknwon type of elements: ' +  elements));
-
+  
   if( typeof parent === 'string' ) el = document.querySelector(parent);
   if( !parent ) return done('not found parent scope element', parent);
   if( !isElement(parent) ) return done(new Error('parent must be an element'));
@@ -116,6 +116,17 @@ function engine(defaults) {
     var singleton = options.singleton;
     var target = options.target;
     var parent = options.parent;
+    var controller = options.controller;
+    
+    if( controller && typeof controller === 'string' ) {
+      var el = document.createElement('div');
+      el.setAttribute('ng-controller', controller);
+      
+      target.innerHTML = '';
+      target.appendChild(el);
+      pack(parent || parentelement(target), el);
+      parent = target = el;
+    }
     
     if( !('singleton' in options) ) singleton = defaults.singleton;
     if( !('parent' in options) ) parent = defaults.parent;
