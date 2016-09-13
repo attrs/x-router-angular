@@ -80,10 +80,11 @@ function scopes(el) {
   if( !isElement(el) ) return console.error('element must be an element or selector', arguments[0]);
   
   var els = el.querySelectorAll('*[ng-controller]');
-  var scopes = {};
+  var scopes = [];
   [].forEach.call(els, function(node) {
     var controller = node.getAttribute('ng-controller');
     var scope = angular.element(node).scope();
+    scopes.push(scope);
     scopes[controller] = scope;
   });
   return scopes;
@@ -121,10 +122,12 @@ function engine(defaults) {
     
     if( singleton && cache[src] ) {
       return (function() {
-        var els = cache[src];
+        var els = cache[src].els;
+        var sc = cache[src].scopes;
         target.innerHTML = '';
         [].forEach.call(els, function(node) {
           target.appendChild(node);
+          done(null, sc);
         });
       })();
     }
@@ -140,7 +143,13 @@ function engine(defaults) {
       
       pack(parent || parentelement(target), els, function(err) {
         if( err ) return done(err);
-        done(null, scopes(target));
+        
+        var sc = scopes(target);
+        if( singleton ) cache[src] = {
+          els: els,
+          scopes: sc
+        };
+        done(null, sc);
       });
     });
   };
