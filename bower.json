@@ -1,0 +1,22 @@
+{
+  "name": "x-router-angular",
+  "description": "x-router-angular",
+  "main": "dist/x-router-angular.js",
+  "moduleType": ["node", "amd", "globals"],
+  "authors": [
+    "joje <joje.attrs@gmail.com>"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/attrs/x-router-angular",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "web_modules",
+    "bower_components",
+    "gulpfile.js",
+    "webpack.config.js",
+    "test",
+    "tests",
+    "bin"
+  ]
+}
