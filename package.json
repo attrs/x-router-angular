@@ -3,6 +3,9 @@
   "version": "0.1.3",
   "description": "x-router angular middleware",
   "main": "x-router-angular.js",
+  "scripts": {
+    "prepublish": "webpack"
+  },
   "repository": "attrs/x-router-angular",
   "author": "joje <joje.attrs@gmail.com>",
   "homepage": "https://github.com/attrs/x-router-angular",
