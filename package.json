@@ -22,5 +22,8 @@
     "*.js",
     "LICENSE",
     "README.md"
-  ]
+  ],
+  "devDependencies": {
+    "webpack": "^1.13.2"
+  }
 }

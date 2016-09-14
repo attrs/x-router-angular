@@ -1,4 +1,3 @@
-var path = require('path');
 var angular = require('angular');
 
 function isNode(node) {
