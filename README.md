@@ -5,6 +5,9 @@
 $ npm install x-router-angular --save
 ```
 
+## Usage
+> See [`example`](https://github.com/attrs/x-router/tree/master/examples/angular)
+
 ```sh
 var router = require('x-router');
 var angularengine = require('x-router-angular');
