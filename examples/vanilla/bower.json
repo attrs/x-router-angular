@@ -1,0 +1,9 @@
+{
+  "name": "x-router-angular-example",
+  "private": true,
+  "dependencies": {
+    "angular": "^1.5.8",
+    "x-router-angular": "^0.1.4",
+    "x-router": "^0.3.7"
+  }
+}
