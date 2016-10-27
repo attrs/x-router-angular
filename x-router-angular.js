@@ -80,11 +80,15 @@ function scopes(el) {
   
   var els = el.querySelectorAll('*[ng-controller]');
   var scopes = [];
+  var elements = scopes.elements = [];
   [].forEach.call(els, function(node) {
     var controller = node.getAttribute('ng-controller');
     var scope = angular.element(node).scope();
     scopes.push(scope);
     scopes[controller] = scope;
+    
+    elements.push(node);
+    elements[controller] = node;
   });
   return scopes;
 }
