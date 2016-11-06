@@ -171,21 +171,23 @@ function middleware(options) {
   options = options || {};
   var app = options.app;
   
+  var root = function() {
+    return app ? document.querySelector('[ng-app="' + app + '"]') : document.querySelector('[ng-app]');
+  };
+  
   return function(req, res, next) {
-    var root = app ? document.querySelector('[ng-app="' + app + '"]') : document.querySelector('[ng-app]');
-    
     res.ensure = function(scope, done) {
       ensure(scope, done);
       return this;
     };
     
     res.pack = function(elements, done) {
-      pack(root, elements, done);
+      pack(root(), elements, done);
       return this;
     };
     
     res.scope = function(el, controller) {
-      if( !arguments.length ) return scope(root);
+      if( !arguments.length ) return scope(root());
       return scope(el, controller);
     };
     
