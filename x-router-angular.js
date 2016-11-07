@@ -38,7 +38,7 @@ function pack(parent, elements, done) {
   if( !isArrayLike(elements) ) return done(new TypeError('unknwon type of elements: ' +  elements));
   
   if( typeof parent === 'string' ) el = document.querySelector(parent);
-  if( !parent ) return done('not found parent scope element', parent);
+  if( !parent ) return done(new Error('not found parent scope element'));
   if( !isElement(parent) ) return done(new Error('parent must be an element'));
   
   parent = angular.element(parent);
@@ -115,6 +115,10 @@ var cache = {};
 function engine(defaults) {
   defaults = defaults || {};
   
+  var root = function() {
+    return defaults.app ? document.querySelector('[ng-app="' + defaults.app + '"]') : document.querySelector('[ng-app]');
+  };
+  
   return function(src, options, done) {
     var singleton = options.singleton;
     var target = options.target;
@@ -127,7 +131,7 @@ function engine(defaults) {
       
       target.innerHTML = '';
       target.appendChild(el);
-      pack(parent || parentelement(target), el);
+      pack(parent || parentelement(target) || root(), el);
       parent = target = el;
     }
     
@@ -153,7 +157,7 @@ function engine(defaults) {
         target.appendChild(node);
       });
       
-      pack(parent || parentelement(target), els, function(err) {
+      pack(parent || parentelement(target) || root(), els, function(err) {
         if( err ) return done(err);
         
         var sc = scopes(target);
