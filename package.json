@@ -1,6 +1,6 @@
 {
   "name": "x-router-angular",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "x-router angular middleware",
   "main": "x-router-angular.js",
   "scripts": {
