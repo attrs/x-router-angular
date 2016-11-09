@@ -124,6 +124,7 @@ function engine(defaults) {
     var target = options.target;
     var parent = options.parent;
     var controller = options.controller;
+    var flat = options.flat || defaults.flat;
     
     if( controller && typeof controller === 'string' ) {
       var el = document.createElement('div');
@@ -131,12 +132,17 @@ function engine(defaults) {
       
       target.innerHTML = '';
       target.appendChild(el);
-      pack(parent || parentelement(target) || root(), el);
+      //pack(parent || parentelement(target) || root(), el);
       parent = target = el;
     }
     
     if( !('singleton' in options) ) singleton = defaults.singleton;
-    if( !('parent' in options) ) parent = defaults.parent;
+    if( !('parent' in options) ) {
+      parent = defaults.parent;
+      if( !parent && !flat ) parent = parentelement(target);
+    }
+    
+    if( !parent ) parent = root();
     
     if( singleton && cache[src] ) {
       return (function() {
@@ -157,7 +163,7 @@ function engine(defaults) {
         target.appendChild(node);
       });
       
-      pack(parent || parentelement(target) || root(), els, function(err) {
+      pack(parent, els, function(err) {
         if( err ) return done(err);
         
         var sc = scopes(target);
