@@ -112,6 +112,7 @@ function parentscope(el) {
 
 
 var cache = {};
+
 function engine(defaults) {
   defaults = defaults || {};
   
@@ -220,6 +221,11 @@ engine.scopes = scopes;
 engine.parentelement = parentelement;
 engine.parentscope = parentscope;
 engine.middleware = middleware;
+engine.cache = cache;
+engine.clearCache = function() {
+  cache = {};
+};
+
 module.exports = engine;
 
 angular.module('xRouterAngular', [])
@@ -230,6 +236,10 @@ angular.module('xRouterAngular', [])
     scope: scope,
     scopes: scopes,
     parentelement: parentelement,
-    parentscope: parentscope
+    parentscope: parentscope,
+    cache: cache,
+    clearCache: function() {
+      cache = {};
+    }
   };
 });
