@@ -152,6 +152,9 @@ function engine(defaults) {
         });
         done(null, cache[src].scopes);
       })();
+    } else {
+      cache[src] = null;
+      delete cache[src];
     }
     
     this.util.ajax(src, function(err, html) {
