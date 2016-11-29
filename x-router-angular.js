@@ -63,10 +63,10 @@ function pack(parent, elements, done) {
 
 function scope(el, controller) {
   if( typeof el === 'string' ) el = document.querySelector(el);
-  if( !el ) return console.error('not found element', el);
+  if( !el ) return console.error('missing element', el);
   if( !isElement(el) ) return console.error('element must be an element or selector', arguments[0]);
   if( controller ) el = el.querySelector('*[ng-controller=\"' + controller + '\"]');
-  if( !el ) return console.error('not found controller', controller);
+  if( !el ) return null;
   //if( !el.hasAttribute('ng-app') && !el.hasAttribute('ng-controller') ) el = el.querySelector('*[ng-controller]');
   //if( !el ) return console.error('not found scoped element', arguments[0]);
   
