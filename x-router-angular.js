@@ -25,9 +25,11 @@ function ensure(scope, done) {
   if( !scope.$apply ) return done(new TypeError('invalid scope (scope.$apply not found)'));
   
   if( scope.$root.$$phase != '$digest' && scope.$root.$$phase != '$apply' ) {
-    scope.$apply(function() {done && done(null, scope);});
+    scope.$apply(function() {
+      done(null, scope);
+    });
   } else {
-    done && done(null, scope);
+    done(null, scope);
   }
 }
 
@@ -112,7 +114,6 @@ function parentscope(el) {
 
 
 var cache = {};
-
 function engine(defaults) {
   defaults = defaults || {};
   
@@ -120,8 +121,9 @@ function engine(defaults) {
     return defaults.app ? document.querySelector('[ng-app="' + defaults.app + '"]') : document.querySelector('[ng-app]');
   };
   
-  return function(src, options, done) {
-    var singleton = options.singleton;
+  return function(options, done) {
+    var src = options.src;
+    var html = options.html;
     var target = options.target;
     var parent = options.parent;
     var controller = options.controller;
@@ -137,7 +139,6 @@ function engine(defaults) {
       parent = target = el;
     }
     
-    if( !('singleton' in options) ) singleton = defaults.singleton;
     if( !('parent' in options) ) {
       parent = defaults.parent;
       if( !parent && !flat ) parent = parentelement(target);
@@ -145,39 +146,51 @@ function engine(defaults) {
     
     if( !parent ) parent = root();
     
-    if( singleton && cache[src] ) {
-      return (function() {
-        target.innerHTML = '';
-        [].forEach.call(cache[src].els, function(node) {
-          target.appendChild(node);
-        });
-        done(null, cache[src].scopes);
-      })();
-    } else {
-      cache[src] = null;
-      delete cache[src];
-    }
-    
-    this.util.ajax(src, function(err, html) {
-      if( err ) return done(err);
+    // load
+    if( src ) {
+      var singleton = options.singleton;
+      if( !('singleton' in options) ) singleton = defaults.singleton;
       
-      var els = this.util.evalhtml(html);
-      target.innerHTML = '';
-      [].forEach.call(els, function(node) {
-        target.appendChild(node);
+      if( singleton && cache[src] ) {
+        return (function() {
+          angular.element(target).html('').append(cache[src].els);
+          done(null, cache[src].scopes);
+        })();
+      } else {
+        cache[src] = null;
+        delete cache[src];
+      }
+      
+      this.util.ajax(src, function(err, html) {
+        if( err ) return done(err);
+        
+        var els = angular.element(html);
+        angular.element(target).html('').append(els);
+        
+        pack(parent, els, function(err) {
+          if( err ) return done(err);
+          
+          var sc = scopes(target);
+          if( singleton ) cache[src] = {
+            els: els,
+            scopes: sc
+          };
+          
+          done(null, sc);
+        });
       });
+      
+    } else if( html ) {
+      var els = angular.element(html);
+      angular.element(target).html('').append(els);
       
       pack(parent, els, function(err) {
         if( err ) return done(err);
-        
-        var sc = scopes(target);
-        if( singleton ) cache[src] = {
-          els: els,
-          scopes: sc
-        };
-        done(null, sc);
+        done(null, scopes(target));
       });
-    });
+    } else {
+      return done(new Error('src or html must be defined'));
+    }
   };
 };
 
