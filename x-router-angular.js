@@ -24,12 +24,12 @@ function ensure(scope, done) {
   if( !scope.$root ) return done(new TypeError('invalid scope (scope.$root not found)'));
   if( !scope.$apply ) return done(new TypeError('invalid scope (scope.$apply not found)'));
   
-  if( scope.$root.$$phase != '$digest' && scope.$root.$$phase != '$apply' ) {
+  if( scope.$$phase == '$apply' || scope.$$phase == '$digest' || scope.$root.$$phase == '$apply' || scope.$root.$$phase == '$digest' ) {
+    done(null, scope);
+  } else {
     scope.$apply(function() {
       done(null, scope);
     });
-  } else {
-    done(null, scope);
   }
 }
 
@@ -211,10 +211,12 @@ function engine(defaults) {
         }
       });
       
-      pack(parent, els, function(err) {
-        if( err ) return done(err);
-        done(null, scopes(target));
-      });
+      setTimeout(function() {
+        pack(parent, els, function(err) {
+          if( err ) return done(err);
+          done(null, scopes(target));
+        });
+      }, 1);
     } else {
       return done(new Error('src or html must be defined'));
     }
