@@ -197,8 +197,19 @@ function engine(defaults) {
         });
       });
     } else if( html ) {
-      var els = angular.element(html);
-      angular.element(target).html('').append(els);
+      var dom = document.createElement('div');
+      dom.innerHTML = html;
+      
+      var els = [];
+      target.innerHTML = '';
+      [].forEach.call(dom.childNodes, function(node) {
+        try {
+          target.appendChild(node);
+          els.push(node);
+        } catch(e) {
+          console.warn('[x-router-angular] dom append error', e);
+        }
+      });
       
       pack(parent, els, function(err) {
         if( err ) return done(err);
