@@ -153,7 +153,14 @@ function engine(defaults) {
       
       if( singleton && cache[src] ) {
         return (function() {
-          angular.element(target).html('').append(cache[src].els);
+          target.innerHTML = '';
+          [].forEach.call(cache[src].els, function(node) {
+            try {
+              target.appendChild(node);
+            } catch(e) {
+              console.warn('[x-router-angular] dom append error', e);
+            }
+          });
           done(null, cache[src].scopes);
         })();
       } else {
@@ -164,8 +171,19 @@ function engine(defaults) {
       this.util.ajax(src, function(err, html) {
         if( err ) return done(err);
         
-        var els = angular.element(html);
-        angular.element(target).html('').append(els);
+        var dom = document.createElement('div');
+        dom.innerHTML = html;
+        
+        var els = [];
+        target.innerHTML = '';
+        [].forEach.call(dom.childNodes, function(node) {
+          try {
+            target.appendChild(node);
+            els.push(node);
+          } catch(e) {
+            console.warn('[x-router-angular] dom append error', e);
+          }
+        });
         
         pack(parent, els, function(err) {
           if( err ) return done(err);
@@ -175,11 +193,9 @@ function engine(defaults) {
             els: els,
             scopes: sc
           };
-          
           done(null, sc);
         });
       });
-      
     } else if( html ) {
       var els = angular.element(html);
       angular.element(target).html('').append(els);
