@@ -18,7 +18,7 @@
     "angular"
   ],
   "peerDependencies": {
-    "angular": "*",
+    "angular": "1.x",
     "x-router": "^0.4.0"
   },
   "files": [
