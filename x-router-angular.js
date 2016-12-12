@@ -129,6 +129,7 @@ function engine(defaults) {
     var controller = options.controller;
     var flat = options.flat || defaults.flat;
     
+    
     if( controller && typeof controller === 'string' ) {
       var el = document.createElement('div');
       el.setAttribute('ng-controller', controller);
@@ -174,12 +175,12 @@ function engine(defaults) {
         var dom = document.createElement('div');
         dom.innerHTML = html;
         
-        var els = [];
+        var els = [].slice.call(dom.childNodes);
+        
         target.innerHTML = '';
-        [].forEach.call(dom.childNodes, function(node) {
+        els.forEach(function(node) {
           try {
             target.appendChild(node);
-            els.push(node);
           } catch(e) {
             console.warn('[x-router-angular] dom append error', e);
           }
@@ -199,13 +200,13 @@ function engine(defaults) {
     } else if( html ) {
       var dom = document.createElement('div');
       dom.innerHTML = html;
+        
+      var els = [].slice.call(dom.childNodes);
       
-      var els = [];
       target.innerHTML = '';
       [].forEach.call(dom.childNodes, function(node) {
         try {
           target.appendChild(node);
-          els.push(node);
         } catch(e) {
           console.warn('[x-router-angular] dom append error', e);
         }
