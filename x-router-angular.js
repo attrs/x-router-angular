@@ -113,6 +113,59 @@ function parentscope(el) {
 }
 
 
+function domutil(target) {
+  return {
+    clear: function() {
+      [].forEach.call(target.childNodes, function(node) {
+        target.removeChild(node);
+      });
+      return this;
+    },
+    append: function(els) {
+      els.forEach(function(node) {
+        if( node.nodeType === 3 ) {
+          if( !node.nodeValue ) return;
+          node = document.createTextNode(node.nodeValue);
+        } else if( node.nodeType !== 1 ) {
+          return;
+        }
+        target.appendChild(node);
+      });
+      return this;
+    },
+    html: function(html) {
+      /*var dom = document.createElement('div');
+      dom.innerHTML = html;
+      
+      var els = [];
+      [].forEach.call(dom.childNodes, function(node) {
+        els.push(node);
+      });
+      
+      target.innerHTML = '';
+      [].forEach.call(dom.childNodes, function(node) {
+        if( node.nodeType === 3 ) {
+          if( !node.nodeValue ) return;
+          node = document.createTextNode(node.nodeValue);
+        } else if( node.nodeType !== 1 ) {
+          return;
+        }
+        target.appendChild(node);
+      });*/
+      target.innerHTML = html;
+      
+      return this;
+    },
+    contents: function() {
+      var els = [];
+      [].forEach.call(target.childNodes, function(node) {
+        els.push(node);
+      });
+      return els;
+    }
+  }
+}
+
 var cache = {};
 function engine(defaults) {
   defaults = defaults || {};
@@ -154,14 +207,7 @@ function engine(defaults) {
       
       if( singleton && cache[src] ) {
         return (function() {
-          target.innerHTML = '';
-          [].forEach.call(cache[src].els, function(node) {
-            try {
-              target.appendChild(node);
-            } catch(e) {
-              console.warn('[x-router-angular] dom append error', e);
-            }
-          });
+          domutil(target).clear().append(cache[src].els);
           done(null, cache[src].scopes);
         })();
       } else {
@@ -172,19 +218,7 @@ function engine(defaults) {
       this.util.ajax(src, function(err, html) {
         if( err ) return done(err);
         
-        var dom = document.createElement('div');
-        dom.innerHTML = html;
-        
-        var els = [].slice.call(dom.childNodes);
-        
-        target.innerHTML = '';
-        els.forEach(function(node) {
-          try {
-            target.appendChild(node);
-          } catch(e) {
-            console.warn('[x-router-angular] dom append error', e);
-          }
-        });
+        var els = domutil(target).html(html).contents();
         
         pack(parent, els, function(err) {
           if( err ) return done(err);
@@ -198,19 +232,7 @@ function engine(defaults) {
         });
       });
     } else if( html ) {
-      var dom = document.createElement('div');
-      dom.innerHTML = html;
-        
-      var els = [].slice.call(dom.childNodes);
-      
-      target.innerHTML = '';
-      [].forEach.call(dom.childNodes, function(node) {
-        try {
-          target.appendChild(node);
-        } catch(e) {
-          console.warn('[x-router-angular] dom append error', e);
-        }
-      });
+      var els = domutil(target).html(html).contents();
       
       setTimeout(function() {
         pack(parent, els, function(err) {
