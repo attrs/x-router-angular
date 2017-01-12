@@ -1,4 +1,6 @@
 var angular = require('angular');
+var crypto = require('crypto');
+var ajax = require('tinyajax');
 
 function isNode(node) {
   if( typeof Node === 'object' && node instanceof Node ) return true;
@@ -134,26 +136,7 @@ function domutil(target) {
       return this;
     },
     html: function(html) {
-      /*var dom = document.createElement('div');
-      dom.innerHTML = html;
-      
-      var els = [];
-      [].forEach.call(dom.childNodes, function(node) {
-        els.push(node);
-      });
-      
-      target.innerHTML = '';
-      [].forEach.call(dom.childNodes, function(node) {
-        if( node.nodeType === 3 ) {
-          if( !node.nodeValue ) return;
-          node = document.createTextNode(node.nodeValue);
-        } else if( node.nodeType !== 1 ) {
-          return;
-        }
-        target.appendChild(node);
-      });*/
       target.innerHTML = html;
-      
       return this;
     },
     contents: function() {
@@ -166,7 +149,71 @@ function domutil(target) {
   }
 }
 
-var cache = {};
+var activenodes = [];
+function gc() {
+  var unstaged = [];
+  activenodes.forEach(function(node) {
+    if( !document.body.contains(node) ) unstaged.push(node);
+  });
+  
+  unstaged.forEach(function(node) {
+    var scope = angular.element(node).scope();
+    
+    if( scope && !cache.exists(scope) ) {
+      activenodes.splice(activenodes.indexOf(node), 1);
+      scope.$destroy();
+    }
+  });
+}
+
+var cache = (function() {
+  var map = {};
+  var scopes = [];
+  
+  var cache = {
+    get: function(id) {
+      return map[id];
+    },
+    set: function(id, item) {
+      map[id] = item;
+      
+      (item.scopes || []).forEach(function(scope) {
+        if( !~scopes.indexOf(scope) ) scopes.push(scope);
+      });
+      
+      return this;
+    },
+    exists: function(scope) {
+      return !!~scopes.indexOf(scope);
+    },
+    remove: function(id) {
+      var item = map[id];
+      if( item ) {
+        (item.scopes || []).forEach(function(scope) {
+          scope.$destroy();
+          if( !~scopes.indexOf(scope) ) scopes.splice(scopes.indexOf(scope), 1);
+        });
+        
+        map[id] = null;
+        delete map[id];
+      }
+      
+      return this;
+    },
+    clear: function() {
+      for(var k in map) {
+        cache.remove(k);
+      }
+      map = {};
+      scopes = [];
+      return this;
+    }
+  };
+  
+  return cache;
+})();
+
+
 function engine(defaults) {
   defaults = defaults || {};
   
@@ -181,7 +228,7 @@ function engine(defaults) {
     var parent = options.parent;
     var controller = options.controller;
     var flat = options.flat || defaults.flat;
-    
+    var cacheid = src || crypto.createHash('md5').update(html).digest('hex');
     
     if( controller && typeof controller === 'string' ) {
       var el = document.createElement('div');
@@ -200,46 +247,50 @@ function engine(defaults) {
     
     if( !parent ) parent = root();
     
-    // load
-    if( src ) {
-      var singleton = options.singleton;
-      if( !('singleton' in options) ) singleton = defaults.singleton;
-      
-      if( singleton && cache[src] ) {
-        return (function() {
-          domutil(target).clear().append(cache[src].els);
-          done(null, cache[src].scopes);
-        })();
-      } else {
-        cache[src] = null;
-        delete cache[src];
-      }
-      
-      this.util.ajax(src, function(err, html) {
-        if( err ) return done(err);
-        
-        var els = domutil(target).html(html).contents();
-        
-        pack(parent, els, function(err) {
-          if( err ) return done(err);
-          
-          var sc = scopes(target);
-          if( singleton ) cache[src] = {
-            els: els,
-            scopes: sc
-          };
-          done(null, sc);
-        });
-      });
-    } else if( html ) {
+    var singleton = options.singleton;
+    if( !('singleton' in options) ) singleton = defaults.singleton;
+    
+    var cached = cache.get(cacheid);
+    if( singleton && cached ) {
+      return (function() {
+        domutil(target).clear().append(cached.els);
+        gc();
+        done(null, cached.scopes);
+      })();
+    } else if( cached ) {
+      cache.remove(cacheid);
+    }
+    
+    var build = function(html) {
       var els = domutil(target).html(html).contents();
       
-      setTimeout(function() {
-        pack(parent, els, function(err) {
-          if( err ) return done(err);
-          done(null, scopes(target));
+      gc();
+      
+      pack(parent, els, function(err) {
+        if( err ) return done(err);
+        
+        [].forEach.call(target.querySelectorAll('[ng-controller]'), function(node) {
+          activenodes.push(node);
         });
-      }, 1);
+        
+        var sc = scopes(target);
+        if( singleton ) cache.set(cacheid, {
+          els: els,
+          scopes: sc
+        });
+        
+        done(null, sc);
+      });
+    };
+    
+    // load
+    if( src ) {
+      ajax(src, function(err, html) {
+        if( err ) return done(err);
+        build(html);
+      });
+    } else if( html ) {
+      build(html);
     } else {
       return done(new Error('src or html must be defined'));
     }
@@ -288,7 +339,7 @@ engine.parentscope = parentscope;
 engine.middleware = middleware;
 engine.cache = cache;
 engine.clearCache = function() {
-  cache = {};
+  cache.clear();
 };
 
 module.exports = engine;
@@ -303,8 +354,6 @@ angular.module('xRouterAngular', [])
     parentelement: parentelement,
     parentscope: parentscope,
     cache: cache,
-    clearCache: function() {
-      cache = {};
-    }
+    clearCache: engine.clearCache
   };
 });
