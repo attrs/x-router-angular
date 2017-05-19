@@ -4,7 +4,7 @@
   "description": "x-router angular middleware",
   "main": "lib/x-router-angular.js",
   "scripts": {
-    "prepublish": "webpack"
+    "prepublish": "gulp"
   },
   "repository": "attrs/x-router-angular",
   "author": "joje <joje.attrs@gmail.com>",
