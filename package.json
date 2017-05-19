@@ -28,9 +28,16 @@
     "README.md"
   ],
   "devDependencies": {
-    "webpack": "^1.13.2"
+    "gulp": "^3.9.1",
+    "gulp-header": "^1.8.8",
+    "gulp-rename": "^1.2.2",
+    "gulp-rimraf": "^0.2.1",
+    "gulp-uglify": "^2.1.2",
+    "gulp-util": "^3.0.8",
+    "webpack": "^1.15.0"
   },
   "dependencies": {
+    "md5": "^2.2.1",
     "tinyajax": "^0.1.0"
   }
 }
