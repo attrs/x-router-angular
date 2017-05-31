@@ -383,6 +383,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var root = util.bootstrap();
 	    var response = options.response;
 	    var usecache = options.cache || options.singleton;
+	    var expire = +options.expire || 0;
+	    var reset = options.reset;
+	    var time = new Date().getTime();
 	    
 	    if( !('cache' in options) && !('singleton' in options) )
 	      usecache = defaults.cache || defaults.singleton;
@@ -427,26 +430,30 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var sc = scopes(target);
 	      if( usecache ) cache.set(cacheid, {
 	        els: els,
-	        scopes: sc
+	        scopes: sc,
+	        time: time
 	      });
 	      
 	      done(null, sc);
 	    }
 	    
 	    // find cache if usecache
-	    if( usecache && cache.get(cacheid) ) {
-	      return (function() {
-	        var els = cache.get(cacheid).els;
-	        if( !(target.children.length === els.length && target.children[0] === els[0]) ) {
-	          //console.log('cache rewrite', cache.get(cacheid).els);
-	          domutil(target).clear().append(cache.get(cacheid).els);
-	        }
+	    if( !reset && usecache && cache.get(cacheid) ) {
+	      var cacheinfo = cache.get(cacheid);
+	      if( !expire || (time - cacheinfo.time) < expire ) {
+	        cacheinfo.time = time;
+	        return (function() {
+	          var els = cacheinfo.els;
+	          if( !(target.children.length === els.length && target.children[0] === els[0]) ) {
+	            domutil(target).clear().append(cacheinfo.els);
+	          }
 	        
-	        done(null, cache.get(cacheid).scopes);
-	      })();
-	    } else {
-	      cache.remove(cacheid);
+	          done(null, cacheinfo.scopes);
+	        })();
+	      }
 	    }
+	    
+	    cache.remove(cacheid);
 	    
 	    // load
 	    if( src ) {
