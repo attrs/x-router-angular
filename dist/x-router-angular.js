@@ -83,20 +83,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return false;
 	}
 
-	function ensure(scope, done) {
+	function safeApply(scope, done) {
 	  done = done || function(err) { if( err ) console.error(err) };
-	  if( isElement(scope) ) scope = angular.element(scope).scope();
-	  if( !scope ) return done(new TypeError('not found scope'));
-	  if( !scope.$root ) return done(new TypeError('invalid scope (scope.$root not found)'));
-	  if( !scope.$apply ) return done(new TypeError('invalid scope (scope.$apply not found)'));
-	  
-	  if( scope.$$phase == '$apply' || scope.$$phase == '$digest' || scope.$root.$$phase == '$apply' || scope.$root.$$phase == '$digest' ) {
-	    done(null, scope);
-	  } else {
-	    scope.$apply(function() {
-	      done(null, scope);
-	    });
+	  if( isElement(scope) ) {
+	    scope = angular.element(scope).scope();
+	    if( !scope ) return done(new TypeError('not found scope'));
 	  }
+	  
+	  var phase = (scope.$root || scope).$$phase;
+	  if(phase == '$apply' || phase == '$digest') scope.$eval(function() {
+	    done(null, scope);
+	  });
+	  else scope.$apply(function() {
+	    done(null, scope);
+	  });
 	}
 
 	/* deprecated */
@@ -270,8 +270,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return {
 	    root: root,
 	    apply: function(scope, done) {
-	      if( typeof scope === 'function' ) ensure(rootscope(), scope);
-	      else ensure(scope, done);
+	      if( typeof scope === 'function' ) safeApply(rootscope(), scope);
+	      else safeApply(scope, done);
 	      return this;
 	    },
 	    bootstrap: bootstrap,
@@ -503,7 +503,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	engine.middleware = middleware;
-	engine.ensure = ensure;
+	engine.ensure = safeApply;      // @deprecated
+	engine.safeApply = safeApply;
 	engine.pack = pack;
 	engine.scope = scope;
 	engine.scopes = scopes;
@@ -514,8 +515,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = engine;
 
 	angular.module('xRouterAngular', [])
-	.service('ensure', function() { return ensure; })
-	.service('inject', function() { return inject; });
+	.service('ensure', function() { return safeApply; }) // @deprecated
+	.service('inject', function() { return inject; })
+	.run(['$rootScope', function(scope) {
+	  scope.safeApply = function(fn) {
+	    safeApply(scope, fn);
+	  };
+	}]);
 
 /***/ }),
 /* 1 */
