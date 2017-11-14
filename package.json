@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "async-each-series": "^1.1.0",
+    "detectie": "^1.0.0",
     "md5": "^2.2.1",
     "tinyajax": "^0.1.0"
   }
